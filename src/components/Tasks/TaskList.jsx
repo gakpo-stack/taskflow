@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 
-export default function TaskList({ userId, refresh }) {
+export default function TaskList({ userId, refresh, onUpdate }) {
   const [tasks, setTasks] = useState([])
   const [filter, setFilter] = useState('all')
 
@@ -21,16 +21,23 @@ export default function TaskList({ userId, refresh }) {
   async function toggleComplete(id, current) {
     await supabase.from('tasks').update({ completed: !current }).eq('id', id)
     fetchTasks()
+    onUpdate()
   }
 
   async function deleteTask(id) {
     await supabase.from('tasks').delete().eq('id', id)
     fetchTasks()
+    onUpdate()
   }
 
   const filtered = filter === 'all' ? tasks
     : filter === 'active' ? tasks.filter(t => !t.completed)
     : tasks.filter(t => t.completed)
+
+  const isOverdue = (dueDate) => {
+    if (!dueDate) return false
+    return new Date(dueDate) < new Date()
+  }
 
   return (
     <div className="task-list">
@@ -39,22 +46,47 @@ export default function TaskList({ userId, refresh }) {
           <button key={f} onClick={() => setFilter(f)}
             className={filter === f ? 'active-filter' : ''}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
+            <span style={{ marginLeft: '0.3rem', opacity: 0.7 }}>
+              ({f === 'all' ? tasks.length
+                : f === 'active' ? tasks.filter(t => !t.completed).length
+                : tasks.filter(t => t.completed).length})
+            </span>
           </button>
         ))}
       </div>
-      {filtered.map(task => (
-        <div key={task.id} className={`task-card priority-${task.priority}`}>
-          <input type="checkbox" checked={task.completed}
-            onChange={() => toggleComplete(task.id, task.completed)} />
-          <div className="task-info">
-            <span className={task.completed ? 'strikethrough' : ''}>{task.title}</span>
-            <span className="task-desc">{task.description}</span>
-          </div>
-          <span className={`badge ${task.priority}`}>{task.priority}</span>
-          <button className="delete-btn" onClick={() => deleteTask(task.id)}>✕</button>
+
+      {filtered.length === 0 ? (
+        <div className="empty">
+          <div className="empty-icon">✅</div>
+          <p>No tasks here</p>
+          <span>Add a task above to get started</span>
         </div>
-      ))}
-      {filtered.length === 0 && <p className="empty">No tasks here.</p>}
+      ) : (
+        filtered.map(task => (
+          <div key={task.id} className={`task-card priority-${task.priority}`}>
+            <input type="checkbox" checked={task.completed}
+              onChange={() => toggleComplete(task.id, task.completed)} />
+            <div className="task-info">
+              <span className={`task-title ${task.completed ? 'strikethrough' : ''}`}>
+                {task.title}
+              </span>
+              {task.description && (
+                <span className="task-desc">{task.description}</span>
+              )}
+              {task.due_date && (
+                <span className={`task-due ${isOverdue(task.due_date) && !task.completed ? 'overdue' : ''}`}>
+                  📅 {new Date(task.due_date).toLocaleDateString()}
+                  {isOverdue(task.due_date) && !task.completed ? ' — Overdue' : ''}
+                </span>
+              )}
+            </div>
+            <div className="task-meta">
+              <span className={`badge ${task.priority}`}>{task.priority}</span>
+              <button className="delete-btn" onClick={() => deleteTask(task.id)}>✕</button>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   )
 }
