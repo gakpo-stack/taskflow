@@ -23,10 +23,15 @@ export default function KanbanBoard({ userId, refresh, onUpdate }) {
   }
 
   async function moveTask(taskId, newStatus) {
-    await supabase.from('tasks').update({ status: newStatus }).eq('id', taskId)
-    await fetchTasks()
-    onUpdate()
-  }
+  await supabase.from('tasks')
+    .update({ 
+      status: newStatus,
+      completed: newStatus === 'done'
+    })
+    .eq('id', taskId)
+  await fetchTasks()
+  onUpdate()
+}
 
   async function deleteTask(id) {
     await supabase.from('tasks').delete().eq('id', id)
