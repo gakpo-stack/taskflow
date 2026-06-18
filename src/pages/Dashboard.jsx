@@ -17,7 +17,20 @@ export default function Dashboard({ user }) {
   const [priority, setPriority] = useState('medium')
   const [dueDate, setDueDate] = useState('')
   const [adding, setAdding] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (!mobile) setSidebarOpen(true)
+      else setSidebarOpen(false)
+    }
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => { fetchStats() }, [refresh])
 
@@ -73,12 +86,18 @@ export default function Dashboard({ user }) {
   ]
 
   return (
-    <div className={`app-layout ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
-      <aside className="sidebar">
+    <div className={`app-layout ${sidebarOpen && !isMobile ? '' : isMobile ? 'mobile-layout' : 'sidebar-collapsed'}`}>
+
+      {/* MOBILE OVERLAY */}
+      {isMobile && sidebarOpen && (
+        <div className="mobile-overlay" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <aside className={`sidebar ${isMobile && sidebarOpen ? 'sidebar-mobile-open' : ''} ${isMobile && !sidebarOpen ? 'sidebar-mobile-hidden' : ''}`}>
         <div className="sidebar-top">
           <div className="sidebar-logo">
             <div className="sidebar-logo-icon" />
-            {sidebarOpen && <span>TaskFlow</span>}
+            <span>TaskFlow</span>
           </div>
           <button className="sidebar-toggle-btn" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle sidebar">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -87,49 +106,40 @@ export default function Dashboard({ user }) {
           </button>
         </div>
 
-        <button className="sidebar-new-task" onClick={() => setShowForm(true)} aria-label="New task">
+        <button className="sidebar-new-task" onClick={() => { setShowForm(true); if(isMobile) setSidebarOpen(false) }} aria-label="New task">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          {sidebarOpen && <span>New Task</span>}
+          <span>New Task</span>
         </button>
 
         <nav className="sidebar-nav">
-          {sidebarOpen && <div className="sidebar-section-label">Views</div>}
+          <div className="sidebar-section-label">Views</div>
           {[
             { id: 'list', label: 'List', icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="1" fill="currentColor"/><circle cx="3" cy="12" r="1" fill="currentColor"/><circle cx="3" cy="18" r="1" fill="currentColor"/></svg> },
             { id: 'kanban', label: 'Kanban', icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg> },
             { id: 'analytics', label: 'Analytics', icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
+            { id: 'team', label: 'Team', icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
           ].map(item => (
-            <button key={item.id} className={`sidebar-item ${view === item.id ? 'active' : ''}`}
-              onClick={() => setView(item.id)} aria-label={item.label}>
+            <button key={item.id}
+              className={`sidebar-item ${view === item.id ? 'active' : ''}`}
+              onClick={() => { setView(item.id); if(isMobile) setSidebarOpen(false) }}
+              aria-label={item.label}>
               {item.icon}
-              {sidebarOpen && <span>{item.label}</span>}
+              <span>{item.label}</span>
             </button>
           ))}
-
-          {sidebarOpen && <div className="sidebar-section-label" style={{marginTop:'0.75rem'}}>Coming Soon</div>}
-          <button className="sidebar-item sidebar-item-disabled" disabled aria-label="Team">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            {sidebarOpen && <span>Team</span>}
-            {sidebarOpen && <span className="sidebar-badge">Soon</span>}
-          </button>
         </nav>
 
         <div className="sidebar-footer">
           <div className="sidebar-user">
             <div className="sidebar-avatar">{user.email[0].toUpperCase()}</div>
-            {sidebarOpen && (
-              <div className="sidebar-user-info">
-                <span className="sidebar-email">{user.email}</span>
-                <span className="sidebar-plan">
-                  {isAtLimit ? '⚠️ Limit reached' : `Free · ${stats.total}/${TASK_LIMIT_FREE} tasks`}
-                </span>
-              </div>
-            )}
+            <div className="sidebar-user-info">
+              <span className="sidebar-email">{user.email}</span>
+              <span className="sidebar-plan">
+                {isAtLimit ? '⚠️ Limit reached' : `Free · ${stats.total}/${TASK_LIMIT_FREE} tasks`}
+              </span>
+            </div>
           </div>
           <button className="sidebar-signout" onClick={() => supabase.auth.signOut()} aria-label="Sign out">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -141,8 +151,28 @@ export default function Dashboard({ user }) {
       </aside>
 
       <main className="main-content">
+        {/* MOBILE HEADER */}
+        {isMobile && (
+          <div className="mobile-header">
+            <button className="sidebar-toggle-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+            <div className="nav-logo">
+              <div className="sidebar-logo-icon" style={{width:20,height:20}} />
+              <span>TaskFlow</span>
+            </div>
+            <button className="btn-new-task" style={{padding:'0.4rem 0.75rem', fontSize:'0.75rem'}} onClick={() => setShowForm(true)}>
+              + New
+            </button>
+          </div>
+        )}
+
         {view === 'analytics' ? (
           <Analytics userId={user.id} />
+        ) : view === 'team' ? (
+          <TeamView userId={user.id} userEmail={user.email} showToast={showToast} />
         ) : (
           <>
             <div className="content-header">
@@ -154,12 +184,14 @@ export default function Dashboard({ user }) {
                   {isAtLimit && <span className="overdue-pill">Task limit reached</span>}
                 </p>
               </div>
-              <button className="btn-new-task" onClick={() => setShowForm(true)} disabled={isAtLimit}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                New Task
-              </button>
+              {!isMobile && (
+                <button className="btn-new-task" onClick={() => setShowForm(true)} disabled={isAtLimit}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  New Task
+                </button>
+              )}
             </div>
 
             <div className="stats-grid">
@@ -178,10 +210,10 @@ export default function Dashboard({ user }) {
             <div className="progress-container">
               <div className="progress-label">
                 <span>Overall Progress</span>
-                <span style={{color: 'var(--primary)', fontWeight: 700}}>{percent}%</span>
+                <span style={{color:'var(--primary)', fontWeight:700}}>{percent}%</span>
               </div>
               <div className="progress-bar">
-                <div className="progress-fill" style={{width: `${percent}%`}} />
+                <div className="progress-fill" style={{width:`${percent}%`}} />
               </div>
               <div className="progress-meta">{stats.completed} of {stats.total} tasks complete</div>
             </div>
@@ -249,6 +281,100 @@ export default function Dashboard({ user }) {
           {toast.message}
         </div>
       )}
+    </div>
+  )
+}
+
+function TeamView({ userId, userEmail, showToast }) {
+  const [members, setMembers] = useState([])
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [teamId, setTeamId] = useState(null)
+
+  useEffect(() => { initTeam() }, [])
+
+  async function initTeam() {
+    let { data: existing } = await supabase
+      .from('team_members')
+      .select('team_id')
+      .eq('user_id', userId)
+      .single()
+
+    if (existing) {
+      setTeamId(existing.team_id)
+      fetchMembers(existing.team_id)
+    } else {
+      const { data: team } = await supabase
+        .from('teams')
+        .insert({ owner_id: userId, name: `${userEmail.split('@')[0]}'s Team` })
+        .select().single()
+      if (team) {
+        await supabase.from('team_members').insert({ team_id: team.id, user_id: userId, email: userEmail, role: 'owner' })
+        setTeamId(team.id)
+        fetchMembers(team.id)
+      }
+    }
+    setLoading(false)
+  }
+
+  async function fetchMembers(tid) {
+    const { data } = await supabase.from('team_members').select('*').eq('team_id', tid)
+    setMembers(data || [])
+  }
+
+  async function inviteMember() {
+    if (!inviteEmail.trim() || !teamId) return
+    const { error } = await supabase.from('team_members').insert({
+      team_id: teamId, email: inviteEmail, role: 'member', user_id: null
+    })
+    if (error) { showToast('Failed to invite member', 'error'); return }
+    showToast(`Invite sent to ${inviteEmail}`)
+    setInviteEmail('')
+    fetchMembers(teamId)
+  }
+
+  async function removeMember(id) {
+    await supabase.from('team_members').delete().eq('id', id)
+    fetchMembers(teamId)
+    showToast('Member removed')
+  }
+
+  if (loading) return <div className="team-loading"><div className="skeleton-block" style={{height:'200px'}} /></div>
+
+  return (
+    <div className="team-page">
+      <div className="analytics-header">
+        <h2>Team</h2>
+        <p>Manage your team members and collaborators</p>
+      </div>
+
+      <div className="team-invite-card">
+        <h3>Invite a member</h3>
+        <div className="team-invite-row">
+          <input className="modal-input" type="email" placeholder="colleague@email.com"
+            value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && inviteMember()} />
+          <button className="btn-primary" onClick={inviteMember}>Send Invite</button>
+        </div>
+      </div>
+
+      <div className="team-members-card">
+        <h3>Members ({members.length})</h3>
+        <div className="team-members-list">
+          {members.map((m, i) => (
+            <div key={i} className="team-member-row">
+              <div className="team-member-avatar">{m.email[0].toUpperCase()}</div>
+              <div className="team-member-info">
+                <span className="team-member-email">{m.email}</span>
+                <span className="team-member-role">{m.role}</span>
+              </div>
+              {m.role !== 'owner' && (
+                <button className="delete-btn" onClick={() => removeMember(m.id)}>✕</button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
