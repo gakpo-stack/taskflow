@@ -1,43 +1,61 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 
-export default function TaskList({ userId, refresh, onUpdate }) {
+export default function TaskList({ userId, refresh, onUpdate, showToast }) {
   const [tasks, setTasks] = useState([])
   const [filter, setFilter] = useState('all')
+  const [editingTask, setEditingTask] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [editPriority, setEditPriority] = useState('medium')
+  const [editDueDate, setEditDueDate] = useState('')
 
-  useEffect(() => {
-    fetchTasks()
-  }, [refresh])
+  useEffect(() => { fetchTasks() }, [refresh])
 
   async function fetchTasks() {
     const { data } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('user_id', userId)
+      .from('tasks').select('*').eq('user_id', userId)
       .order('created_at', { ascending: false })
     setTasks(data || [])
   }
 
   async function toggleComplete(id, current) {
     await supabase.from('tasks').update({ completed: !current }).eq('id', id)
-    fetchTasks()
-    onUpdate()
+    fetchTasks(); onUpdate()
   }
 
   async function deleteTask(id) {
     await supabase.from('tasks').delete().eq('id', id)
-    fetchTasks()
-    onUpdate()
+    fetchTasks(); onUpdate()
+    showToast('Task deleted')
   }
+
+  function openEdit(task) {
+    setEditingTask(task)
+    setEditTitle(task.title)
+    setEditDesc(task.description || '')
+    setEditPriority(task.priority)
+    setEditDueDate(task.due_date || '')
+  }
+
+  async function saveEdit() {
+    if (!editTitle.trim()) return
+    await supabase.from('tasks').update({
+      title: editTitle,
+      description: editDesc,
+      priority: editPriority,
+      due_date: editDueDate || null
+    }).eq('id', editingTask.id)
+    setEditingTask(null)
+    fetchTasks(); onUpdate()
+    showToast('Task updated')
+  }
+
+  const isOverdue = (dueDate) => dueDate && new Date(dueDate) < new Date()
 
   const filtered = filter === 'all' ? tasks
     : filter === 'active' ? tasks.filter(t => !t.completed)
     : tasks.filter(t => t.completed)
-
-  const isOverdue = (dueDate) => {
-    if (!dueDate) return false
-    return new Date(dueDate) < new Date()
-  }
 
   return (
     <div className="task-list">
@@ -46,7 +64,7 @@ export default function TaskList({ userId, refresh, onUpdate }) {
           <button key={f} onClick={() => setFilter(f)}
             className={filter === f ? 'active-filter' : ''}>
             {f.charAt(0).toUpperCase() + f.slice(1)}
-            <span style={{ marginLeft: '0.3rem', opacity: 0.7 }}>
+            <span style={{marginLeft:'0.3rem', opacity:0.6}}>
               ({f === 'all' ? tasks.length
                 : f === 'active' ? tasks.filter(t => !t.completed).length
                 : tasks.filter(t => t.completed).length})
@@ -57,22 +75,26 @@ export default function TaskList({ userId, refresh, onUpdate }) {
 
       {filtered.length === 0 ? (
         <div className="empty">
-          <div className="empty-icon">✅</div>
+          <div className="empty-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+          </div>
           <p>No tasks here</p>
-          <span>Add a task above to get started</span>
+          <span>Click "+ New Task" to get started</span>
         </div>
       ) : (
         filtered.map(task => (
-          <div key={task.id} className={`task-card priority-${task.priority}`}>
+          <div key={task.id} className={`task-card priority-${task.priority}`}
+            onClick={() => openEdit(task)}>
             <input type="checkbox" checked={task.completed}
-              onChange={() => toggleComplete(task.id, task.completed)} />
+              onChange={() => toggleComplete(task.id, task.completed)}
+              onClick={e => e.stopPropagation()} />
             <div className="task-info">
               <span className={`task-title ${task.completed ? 'strikethrough' : ''}`}>
                 {task.title}
               </span>
-              {task.description && (
-                <span className="task-desc">{task.description}</span>
-              )}
+              {task.description && <span className="task-desc">{task.description}</span>}
               {task.due_date && (
                 <span className={`task-due ${isOverdue(task.due_date) && !task.completed ? 'overdue' : ''}`}>
                   📅 {new Date(task.due_date).toLocaleDateString()}
@@ -82,10 +104,56 @@ export default function TaskList({ userId, refresh, onUpdate }) {
             </div>
             <div className="task-meta">
               <span className={`badge ${task.priority}`}>{task.priority}</span>
-              <button className="delete-btn" onClick={() => deleteTask(task.id)}>✕</button>
+              <button className="delete-btn" onClick={e => { e.stopPropagation(); deleteTask(task.id) }}>✕</button>
             </div>
           </div>
         ))
+      )}
+
+      {/* EDIT MODAL */}
+      {editingTask && (
+        <div className="modal-overlay" onClick={() => setEditingTask(null)} role="dialog" aria-modal="true">
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Task</h3>
+              <button className="modal-close" onClick={() => setEditingTask(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-field">
+                <label>Title *</label>
+                <input className="modal-input" type="text" value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveEdit()} autoFocus />
+              </div>
+              <div className="modal-field">
+                <label>Description</label>
+                <textarea className="modal-textarea" rows={3} value={editDesc}
+                  onChange={e => setEditDesc(e.target.value)} />
+              </div>
+              <div className="modal-row">
+                <div className="modal-field">
+                  <label>Priority</label>
+                  <select className="modal-select" value={editPriority}
+                    onChange={e => setEditPriority(e.target.value)}>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div className="modal-field">
+                  <label>Due Date</label>
+                  <input className="modal-input" type="date" value={editDueDate}
+                    onChange={e => setEditDueDate(e.target.value)} />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setEditingTask(null)}>Cancel</button>
+              <button className="btn-primary" onClick={saveEdit}
+                disabled={!editTitle.trim()}>Save Changes</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

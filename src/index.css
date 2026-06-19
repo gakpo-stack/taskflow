@@ -979,3 +979,54 @@ body {
   .analytics-grid { grid-template-columns: repeat(2,1fr); }
   .analytics-charts { grid-template-columns: 1fr; }
 }
+/* LIGHT MODE */
+[data-theme="light"] {
+  --bg-base: #ffffff;
+  --bg-surface: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --bg-hover: rgba(0,0,0,0.03);
+
+  --border: rgba(0,0,0,0.08);
+  --border-strong: rgba(0,0,0,0.14);
+
+  --text: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08);
+  --shadow-hover: 0 4px 20px rgba(0,0,0,0.1);
+}
+
+[data-theme="light"] .sidebar {
+  background: #1e293b;
+}
+
+[data-theme="light"] .mockup-browser {
+  box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+}
+
+[data-theme="light"] .hero {
+  background: linear-gradient(135deg, #f8fafc 0%, #ede9fe 100%);
+}
+
+[data-theme="light"] .landing {
+  background: #ffffff;
+}
+
+[data-theme="light"] .final-cta {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+}
+
+[data-theme="light"] .modal-input,
+[data-theme="light"] .modal-select,
+[data-theme="light"] .modal-textarea {
+  background: #f8fafc;
+  color: var(--text);
+}
+
+[data-theme="light"] .modal-select option {
+  background: white;
+  color: var(--text);
+}
