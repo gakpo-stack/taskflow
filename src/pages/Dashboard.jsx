@@ -1,3 +1,4 @@
+import { useTrialPlan } from '../lib/useTrialPlan'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import TaskList from '../components/Tasks/TaskList'
@@ -19,6 +20,9 @@ export default function Dashboard({ user, theme, setTheme }) {
   const [adding, setAdding] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+
+  const { isPro, trialDaysLeft, isTrialActive } = useTrialPlan(user.id)
+  const taskLimit = isPro ? Infinity : TASK_LIMIT_FREE
 
   useEffect(() => {
     const handleResize = () => {
@@ -52,10 +56,13 @@ export default function Dashboard({ user, theme, setTheme }) {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const percent = stats.total === 0 ? 0 : Math.round((stats.completed / stats.total) * 100)
+  const isAtLimit = stats.total >= taskLimit
+
   async function handleAdd() {
     if (!title.trim()) return
-    if (stats.total >= TASK_LIMIT_FREE) {
-      showToast(`Free plan limit: ${TASK_LIMIT_FREE} tasks. Upgrade to Pro.`, 'error')
+    if (isAtLimit) {
+      showToast(isPro ? 'Something went wrong.' : `Free plan limit: ${TASK_LIMIT_FREE} tasks. Upgrade to Pro.`, 'error')
       return
     }
     setAdding(true)
@@ -71,9 +78,6 @@ export default function Dashboard({ user, theme, setTheme }) {
     showToast('Task added')
   }
 
-  const percent = stats.total === 0 ? 0 : Math.round((stats.completed / stats.total) * 100)
-  const isAtLimit = stats.total >= TASK_LIMIT_FREE
-
   const statCards = [
     { label: 'Total', value: stats.total, color: '#6366f1', bg: 'rgba(99,102,241,0.1)',
       icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> },
@@ -88,7 +92,6 @@ export default function Dashboard({ user, theme, setTheme }) {
   return (
     <div className={`app-layout ${sidebarOpen && !isMobile ? '' : isMobile ? 'mobile-layout' : 'sidebar-collapsed'}`}>
 
-      {/* MOBILE OVERLAY */}
       {isMobile && sidebarOpen && (
         <div className="mobile-overlay" onClick={() => setSidebarOpen(false)} />
       )}
@@ -137,17 +140,23 @@ export default function Dashboard({ user, theme, setTheme }) {
             <div className="sidebar-user-info">
               <span className="sidebar-email">{user.email}</span>
               <span className="sidebar-plan">
-                {isAtLimit ? '⚠️ Limit reached' : `Free · ${stats.total}/${TASK_LIMIT_FREE} tasks`}
+                {isTrialActive
+                  ? `Pro Trial · ${trialDaysLeft} days left`
+                  : isPro
+                  ? 'Pro Plan'
+                  : isAtLimit
+                  ? '⚠️ Limit reached'
+                  : `Free · ${stats.total}/${TASK_LIMIT_FREE} tasks`}
               </span>
             </div>
           </div>
           <button className="sidebar-signout" onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme" style={{marginRight:'0.25rem'}}>
-  {theme === 'dark'
-    ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-  }
-</button>
-<button className="sidebar-signout" onClick={() => supabase.auth.signOut()} aria-label="Sign out">
+            {theme === 'dark'
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            }
+          </button>
+          <button className="sidebar-signout" onClick={() => supabase.auth.signOut()} aria-label="Sign out">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
@@ -157,7 +166,6 @@ export default function Dashboard({ user, theme, setTheme }) {
       </aside>
 
       <main className="main-content">
-        {/* MOBILE HEADER */}
         {isMobile && (
           <div className="mobile-header">
             <button className="sidebar-toggle-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
@@ -187,7 +195,7 @@ export default function Dashboard({ user, theme, setTheme }) {
                 <p className="content-subtitle">
                   {stats.active} active · {stats.completed} completed
                   {stats.overdue > 0 && <span className="overdue-pill">{stats.overdue} overdue</span>}
-                  {isAtLimit && <span className="overdue-pill">Task limit reached</span>}
+                  {isAtLimit && !isPro && <span className="overdue-pill">Task limit reached</span>}
                 </p>
               </div>
               {!isMobile && (
@@ -265,7 +273,7 @@ export default function Dashboard({ user, theme, setTheme }) {
                   <input className="modal-input" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
                 </div>
               </div>
-              {isAtLimit && (
+              {isAtLimit && !isPro && (
                 <div className="modal-limit-warning">
                   You've reached the 20 task limit on the Free plan. Delete a task or upgrade to Pro.
                 </div>

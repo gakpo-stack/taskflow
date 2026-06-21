@@ -10,13 +10,17 @@ export default function TaskList({ userId, refresh, onUpdate, showToast }) {
   const [editPriority, setEditPriority] = useState('medium')
   const [editDueDate, setEditDueDate] = useState('')
 
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => { fetchTasks() }, [refresh])
 
   async function fetchTasks() {
+    setLoading(true)
     const { data } = await supabase
       .from('tasks').select('*').eq('user_id', userId)
       .order('created_at', { ascending: false })
     setTasks(data || [])
+    setLoading(false)
   }
 
   async function toggleComplete(id, current) {
@@ -73,7 +77,20 @@ export default function TaskList({ userId, refresh, onUpdate, showToast }) {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="skeleton-list">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="skeleton-task-card">
+              <div className="skeleton-block" style={{width:'18px', height:'18px', borderRadius:'4px', flexShrink:0}} />
+              <div style={{flex:1, display:'flex', flexDirection:'column', gap:'6px'}}>
+                <div className="skeleton-block" style={{height:'14px', width:'70%'}} />
+                <div className="skeleton-block" style={{height:'11px', width:'40%'}} />
+              </div>
+              <div className="skeleton-block" style={{width:'50px', height:'20px', borderRadius:'99px'}} />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="empty">
           <div className="empty-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
