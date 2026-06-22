@@ -114,7 +114,7 @@ export default function TaskList({ userId, refresh, onUpdate, showToast }) {
               {task.description && <span className="task-desc">{task.description}</span>}
               {task.due_date && (
                 <span className={`task-due ${isOverdue(task.due_date) && !task.completed ? 'overdue' : ''}`}>
-                  📅 {new Date(task.due_date).toLocaleDateString()}
+                  Due {new Date(task.due_date).toLocaleDateString()}
                   {isOverdue(task.due_date) && !task.completed ? ' — Overdue' : ''}
                 </span>
               )}
